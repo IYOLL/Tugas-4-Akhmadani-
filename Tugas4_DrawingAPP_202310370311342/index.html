@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>  Paint Pro 🎨</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            align-items: center;
+        }
+        .tool-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .tool-group label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+        }
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            transform: translateY(-1px);
+        }
+        .tool-btn {
+            background: #007bff;
+            color: white;
+        }
+        .tool-btn.active {
+            background: #28a745;
+        }
+        .transform-btn {
+            background: #17a2b8;
+            color: white;
+        }
+        .transform-btn.active {
+            background: #28a745;
+        }
+        .window-btn {
+            background: #ffc107;
+            color: black;
+        }
+        .window-btn.active {
+            background: #28a745;
+            color: white;
+        }
+        .clear-btn {
+            background: #dc3545;
+            color: white;
+        }
+        input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type="range"] {
+            width: 80px;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        canvas {
+            border: 2px solid #333;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+            background: white;
+        }
+        .info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .coords {
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #155724;
+        }
+        .debug {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #856404;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>   Paint Pro 🎨</h1>
+        
+        <div class="toolbar">
+            <div class="tool-group">
+                <label>Alat Gambar:</label>
+                <div>
+                    <button class="tool-btn active" id="point-btn" onclick="setTool('point')">Titik</button>
+                    <button class="tool-btn" id="line-btn" onclick="setTool('line')">Garis</button>
+                    <button class="tool-btn" id="rectangle-btn" onclick="setTool('rectangle')">Persegi</button>
+                    <button class="tool-btn" id="ellipse-btn" onclick="setTool('ellipse')">Ellipse</button>
+                </div>
+            </div>
+            
+            <div class="tool-group">
+                <label>Warna:</label>
+                <input type="color" id="colorPicker" value="#000000">
+            </div>
+            
+            <div class="tool-group">
+                <label>Ketebalan:</label>
+                <input type="range" id="thicknessPicker" min="1" max="10" value="2">
+                <span id="thicknessValue">2</span>
+            </div>
+            
+            <div class="tool-group">
+                <label>Transformasi:</label>
+                <div>
+                    <button class="transform-btn" id="translate-btn" onclick="setTransform('translate')">Translasi</button>
+                    <button class="transform-btn" id="rotate-btn" onclick="setTransform('rotate')">Rotasi</button>
+                    <button class="transform-btn" id="scale-btn" onclick="setTransform('scale')">Scaling</button>
+                </div>
+            </div>
+            
+            <div class="tool-group">
+                <label>Windowing:</label>
+                <div>
+                    <button class="window-btn" id="window-btn" onclick="setTool('window')">Set Window</button>
+                    <button class="window-btn" id="clip-btn" onclick="toggleClipping()">Clipping OFF</button>
+                </div>
+            </div>
+            
+            <div class="tool-group">
+                <label>Parameter:</label>
+                <div>
+                    <input type="number" id="transX" placeholder="X" value="20" style="width: 50px;">
+                    <input type="number" id="transY" placeholder="Y" value="20" style="width: 50px;">
+                    <input type="number" id="rotAngle" placeholder="°" value="15" style="width: 50px;">
+                    <input type="number" id="scaleX" placeholder="SX" value="1.2" step="0.1" style="width: 50px;">
+                    <input type="number" id="scaleY" placeholder="SY" value="1.2" step="0.1" style="width: 50px;">
+                </div>
+            </div>
+            
+            <div class="tool-group">
+                <button class="clear-btn" onclick="clearCanvas()">Hapus Semua</button>
+            </div>
+        </div>
+        
+        <canvas id="canvas" width="800" height="600"></canvas>
+        
+        <div class="coords" id="coords">Koordinat Mouse: (0, 0)</div>
+        <div class="status" id="status">Mode: Menggambar Titik</div>
+        <div class="debug" id="debug">Debug: Ready</div>
+        
+        <div class="info">
+            <strong>Cara Penggunaan:</strong>
+            <br>• <strong>Gambar:</strong> Pilih alat, klik/drag di canvas
+            <br>• <strong>Transformasi:</strong> Pilih transformasi (tombol akan hijau), lalu klik objek yang ingin ditransformasi
+            <br>• <strong>Window:</strong> Pilih "Set Window", drag untuk membuat area hijau
+            <br>• <strong>Clipping:</strong> Toggle untuk menyembunyikan objek di luar window
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.getElementById('colorPicker');
+        const thicknessPicker = document.getElementById('thicknessPicker');
+        const thicknessValue = document.getElementById('thicknessValue');
+        const coords = document.getElementById('coords');
+        const status = document.getElementById('status');
+        const debug = document.getElementById('debug');
+        
+        let currentTool = 'point';
+        let currentTransform = null;
+        let isDrawing = false;
+        let startX, startY;
+        let objects = [];
+        let selectedObject = null;
+        let windowArea = null;
+        let clippingEnabled = false;
+        let isTransformMode = false;
+        
+        // Debug function
+        function addDebug(message) {
+            debug.innerHTML += '<br>' + message;
+            debug.scrollTop = debug.scrollHeight;
+            console.log(message);
+        }
+        
+        // Update thickness display
+        thicknessPicker.addEventListener('input', function() {
+            thicknessValue.textContent = this.value;
+        });
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        canvas.addEventListener('click', handleClick);
+        
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            
+            addDebug(`MouseDown: (${startX}, ${startY}) - Transform: ${isTransformMode}`);
+            
+            // Don't start drawing if in transform mode
+            if (isTransformMode) {
+                return;
+            }
+            
+            // Start drawing for shapes (not point)
+            if (currentTool !== 'point') {
+                isDrawing = true;
+                addDebug(`Started drawing ${currentTool}`);
+            }
+        }
+        
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            coords.textContent = `Koordinat Mouse: (${Math.round(x)}, ${Math.round(y)})`;
+            
+            if (isDrawing) {
+                redrawCanvas();
+                drawPreview(startX, startY, x, y);
+            }
+        }
+        
+        function handleMouseUp(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            addDebug(`MouseUp: Creating ${currentTool} from (${startX}, ${startY}) to (${endX}, ${endY})`);
+            
+            // Create object or window
+            if (currentTool === 'window') {
+                createWindow(startX, startY, endX, endY);
+            } else {
+                createObject(startX, startY, endX, endY);
+            }
+            
+            isDrawing = false;
+        }
+        
+        function handleClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            addDebug(`Click: (${x}, ${y}) - Transform mode: ${isTransformMode}`);
+            
+            // If in transform mode, select and transform object
+            if (isTransformMode) {
+                selectAndTransformObject(x, y);
+                return;
+            }
+            
+            // For drawing points
+            if (currentTool === 'point') {
+                createObject(x, y, x, y);
+                addDebug('Point created');
+            }
+        }
+        
+        function setTool(tool) {
+            addDebug(`Switching to tool: ${tool}`);
+            
+            // Reset transform mode
+            isTransformMode = false;
+            currentTransform = null;
+            currentTool = tool;
+            selectedObject = null;
+            
+            // Update UI buttons
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tool + '-btn').classList.add('active');
+            document.querySelectorAll('.transform-btn').forEach(btn => btn.classList.remove('active'));
+            
+            updateStatus();
+        }
+        
+        function setTransform(transform) {
+            addDebug(`Switching to transform: ${transform}`);
+            
+            // Set transform mode
+            isTransformMode = true;
+            currentTransform = transform;
+            selectedObject = null;
+            
+            // Update UI buttons
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.transform-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(transform + '-btn').classList.add('active');
+            
+            updateStatus();
+        }
+        
+        function updateStatus() {
+            let statusText = '';
+            if (isTransformMode && currentTransform) {
+                statusText = `Mode: ${currentTransform.toUpperCase()} - Klik objek untuk mentransformasi`;
+            } else if (currentTool === 'window') {
+                statusText = 'Mode: Set Window - Drag untuk membuat area window';
+            } else {
+                statusText = `Mode: Menggambar ${currentTool.toUpperCase()}`;
+            }
+            status.textContent = statusText;
+        }
+        
+        function createObject(x1, y1, x2, y2) {
+            const obj = {
+                type: currentTool,
+                x1: x1,
+                y1: y1,
+                x2: x2,
+                y2: y2,
+                color: colorPicker.value,
+                thickness: parseInt(thicknessPicker.value),
+                originalColor: colorPicker.value,
+                inWindow: false,
+                id: Date.now() + Math.random()
+            };
+            
+            objects.push(obj);
+            redrawCanvas();
+            addDebug(`Object created: ${currentTool} with ${objects.length} total objects`);
+        }
+        
+        function createWindow(x1, y1, x2, y2) {
+            windowArea = {
+                x1: Math.min(x1, x2),
+                y1: Math.min(y1, y2),
+                x2: Math.max(x1, x2),
+                y2: Math.max(y1, y2)
+            };
+            
+            addDebug('Window area created');
+            redrawCanvas();
+        }
+        
+        function drawObject(obj) {
+            // Skip drawing if clipping is enabled and object is outside window
+            if (clippingEnabled && windowArea && !obj.inWindow) {
+                return;
+            }
+            
+            ctx.strokeStyle = obj.color;
+            ctx.fillStyle = obj.color;
+            ctx.lineWidth = obj.thickness;
+            
+            switch (obj.type) {
+                case 'point':
+                    ctx.beginPath();
+                    ctx.arc(obj.x1, obj.y1, obj.thickness, 0, 2 * Math.PI);
+                    ctx.fill();
+                    break;
+                    
+                case 'line':
+                    ctx.beginPath();
+                    ctx.moveTo(obj.x1, obj.y1);
+                    ctx.lineTo(obj.x2, obj.y2);
+                    ctx.stroke();
+                    break;
+                    
+                case 'rectangle':
+                    ctx.beginPath();
+                    ctx.rect(obj.x1, obj.y1, obj.x2 - obj.x1, obj.y2 - obj.y1);
+                    ctx.stroke();
+                    break;
+                    
+                case 'ellipse':
+                    const centerX = (obj.x1 + obj.x2) / 2;
+                    const centerY = (obj.y1 + obj.y2) / 2;
+                    const radiusX = Math.abs(obj.x2 - obj.x1) / 2;
+                    const radiusY = Math.abs(obj.y2 - obj.y1) / 2;
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    break;
+            }
+        }
+        
+        function drawPreview(x1, y1, x2, y2) {
+            ctx.strokeStyle = colorPicker.value;
+            ctx.fillStyle = colorPicker.value;
+            ctx.lineWidth = parseInt(thicknessPicker.value);
+            ctx.setLineDash([5, 5]);
+            
+            switch (currentTool) {
+                case 'line':
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                    break;
+                    
+                case 'rectangle':
+                    ctx.beginPath();
+                    ctx.rect(x1, y1, x2 - x1, y2 - y1);
+                    ctx.stroke();
+                    break;
+                    
+                case 'ellipse':
+                    const centerX = (x1 + x2) / 2;
+                    const centerY = (y1 + y2) / 2;
+                    const radiusX = Math.abs(x2 - x1) / 2;
+                    const radiusY = Math.abs(y2 - y1) / 2;
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    break;
+                    
+                case 'window':
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(x1, y1, x2 - x1, y2 - y1);
+                    ctx.stroke();
+                    break;
+            }
+            
+            ctx.setLineDash([]);
+        }
+        
+        function selectAndTransformObject(x, y) {
+            addDebug(`Searching for object near (${x}, ${y})`);
+            
+            // Find closest object to click point
+            let closestObj = null;
+            let minDistance = Infinity;
+            
+            objects.forEach((obj, index) => {
+                const distance = getDistanceToObject(obj, x, y);
+                addDebug(`Object ${index}: distance = ${distance}`);
+                if (distance < minDistance && distance < 50) {
+                    minDistance = distance;
+                    closestObj = obj;
+                }
+            });
+            
+            if (closestObj) {
+                addDebug(`Object selected for ${currentTransform}`);
+                selectedObject = closestObj;
+                applyTransform();
+            } else {
+                addDebug('No object found near click point');
+            }
+        }
+        
+        function getDistanceToObject(obj, x, y) {
+            let centerX, centerY;
+            
+            if (obj.type === 'point') {
+                centerX = obj.x1;
+                centerY = obj.y1;
+            } else {
+                centerX = (obj.x1 + obj.x2) / 2;
+                centerY = (obj.y1 + obj.y2) / 2;
+            }
+            
+            return Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        }
+        
+        function applyTransform() {
+            if (!selectedObject || !currentTransform) {
+                addDebug('Cannot apply transform: missing object or transform type');
+                return;
+            }
+            
+            const transX = parseFloat(document.getElementById('transX').value) || 0;
+            const transY = parseFloat(document.getElementById('transY').value) || 0;
+            const angle = parseFloat(document.getElementById('rotAngle').value) || 0;
+            const scaleX = parseFloat(document.getElementById('scaleX').value) || 1;
+            const scaleY = parseFloat(document.getElementById('scaleY').value) || 1;
+            
+            addDebug(`Applying ${currentTransform}: tx=${transX}, ty=${transY}, angle=${angle}, sx=${scaleX}, sy=${scaleY}`);
+            
+            const originalPos = `(${selectedObject.x1}, ${selectedObject.y1}) to (${selectedObject.x2}, ${selectedObject.y2})`;
+            
+            switch (currentTransform) {
+                case 'translate':
+                    selectedObject.x1 += transX;
+                    selectedObject.y1 += transY;
+                    selectedObject.x2 += transX;
+                    selectedObject.y2 += transY;
+                    break;
+                    
+                case 'rotate':
+                    rotateObject(selectedObject, angle);
+                    break;
+                    
+                case 'scale':
+                    scaleObject(selectedObject, scaleX, scaleY);
+                    break;
+            }
+            
+            const newPos = `(${selectedObject.x1}, ${selectedObject.y1}) to (${selectedObject.x2}, ${selectedObject.y2})`;
+            addDebug(`Transform applied: ${originalPos} -> ${newPos}`);
+            
+            redrawCanvas();
+        }
+        
+        function rotateObject(obj, angle) {
+            const centerX = (obj.x1 + obj.x2) / 2;
+            const centerY = (obj.y1 + obj.y2) / 2;
+            const rad = angle * Math.PI / 180;
+            
+            // Rotate point 1
+            const x1 = obj.x1 - centerX;
+            const y1 = obj.y1 - centerY;
+            obj.x1 = centerX + x1 * Math.cos(rad) - y1 * Math.sin(rad);
+            obj.y1 = centerY + x1 * Math.sin(rad) + y1 * Math.cos(rad);
+            
+            // Rotate point 2
+            const x2 = obj.x2 - centerX;
+            const y2 = obj.y2 - centerY;
+            obj.x2 = centerX + x2 * Math.cos(rad) - y2 * Math.sin(rad);
+            obj.y2 = centerY + x2 * Math.sin(rad) + y2 * Math.cos(rad);
+        }
+        
+        function scaleObject(obj, sx, sy) {
+            const centerX = (obj.x1 + obj.x2) / 2;
+            const centerY = (obj.y1 + obj.y2) / 2;
+            
+            obj.x1 = centerX + (obj.x1 - centerX) * sx;
+            obj.y1 = centerY + (obj.y1 - centerY) * sy;
+            obj.x2 = centerX + (obj.x2 - centerX) * sx;
+            obj.y2 = centerY + (obj.y2 - centerY) * sy;
+        }
+        
+        function toggleClipping() {
+            clippingEnabled = !clippingEnabled;
+            const clipBtn = document.getElementById('clip-btn');
+            clipBtn.textContent = clippingEnabled ? 'Clipping ON' : 'Clipping OFF';
+            clipBtn.style.background = clippingEnabled ? '#28a745' : '#ffc107';
+            clipBtn.style.color = clippingEnabled ? 'white' : 'black';
+            
+            addDebug('Clipping toggled: ' + clippingEnabled);
+            redrawCanvas();
+        }
+        
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update windowing status for all objects
+            if (windowArea) {
+                objects.forEach(obj => {
+                    obj.inWindow = isObjectInWindow(obj);
+                    
+                    // Change color based on window status
+                    if (obj.inWindow) {
+                        obj.color = '#ff0000'; // Red for objects in window
+                    } else {
+                        obj.color = obj.originalColor; // Original color for objects outside window
+                    }
+                });
+            } else {
+                // Reset all colors if no window
+                objects.forEach(obj => {
+                    obj.color = obj.originalColor;
+                    obj.inWindow = false;
+                });
+            }
+            
+            // Draw all objects
+            objects.forEach(drawObject);
+            
+            // Draw window area
+            if (windowArea) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.rect(windowArea.x1, windowArea.y1, 
+                        windowArea.x2 - windowArea.x1, 
+                        windowArea.y2 - windowArea.y1);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Add window label
+                ctx.fillStyle = '#00ff00';
+                ctx.font = '14px Arial';
+                ctx.fillText('WINDOW', windowArea.x1 + 5, windowArea.y1 - 5);
+            }
+        }
+        
+        function isObjectInWindow(obj) {
+            if (!windowArea) return false;
+            
+            // Check if object center is within window
+            const objCenterX = (obj.x1 + obj.x2) / 2;
+            const objCenterY = (obj.y1 + obj.y2) / 2;
+            
+            return objCenterX >= windowArea.x1 && objCenterX <= windowArea.x2 &&
+                   objCenterY >= windowArea.y1 && objCenterY <= windowArea.y2;
+        }
+        
+        function clearCanvas() {
+            objects = [];
+            windowArea = null;
+            selectedObject = null;
+            currentTransform = null;
+            isTransformMode = false;
+            clippingEnabled = false;
+            
+            // Reset buttons
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('point-btn').classList.add('active');
+            document.querySelectorAll('.transform-btn').forEach(btn => btn.classList.remove('active'));
+            
+            const clipBtn = document.getElementById('clip-btn');
+            clipBtn.textContent = 'Clipping OFF';
+            clipBtn.style.background = '#ffc107';
+            clipBtn.style.color = 'black';
+            
+            currentTool = 'point';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateStatus();
+            addDebug('Canvas cleared');
+        }
+        
+        // Initialize
+        updateStatus();
+        addDebug('Application initialized');
+    </script>
+</body>
+</html>
